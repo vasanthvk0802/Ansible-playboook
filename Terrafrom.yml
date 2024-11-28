@@ -1,0 +1,44 @@
+---
+- name: Install Terraform on Amazon Linux
+  hosts: all
+  become: true
+  vars:
+    terraform_version: "1.5.6"
+    terraform_url: "https://releases.hashicorp.com/terraform/{{ terraform_version }}/terraform_{{ terraform_version }}_linux_amd64.zip"
+  tasks:
+    - name: Install unzip
+      yum:
+        name: unzip
+        state: latest
+
+    - name: Debug Terraform download URL
+      debug:
+        msg: "Downloading Terraform from {{ terraform_url }}"
+
+    - name: Download Terraform
+      get_url:
+        url: "{{ terraform_url }}"
+        dest: /tmp/terraform.zip
+
+    - name: Verify Terraform archive size
+      stat:
+        path: /tmp/terraform.zip
+      register: terraform_file
+
+    - name: Unzip Terraform
+      unarchive:
+        src: /tmp/terraform.zip
+        dest: /usr/local/bin/
+        remote_src: yes
+      when: "'size' in terraform_file.stat and terraform_file.stat.size > 0"
+
+    - name: Clean up Terraform zip file
+      file:
+        path: /tmp/terraform.zip
+        state: absent
+
+    - name: Ensure Terraform is executable
+      file:
+        path: /usr/local/bin/terraform
+        mode: '0755'
+      when: terraform_file.stat.exists
